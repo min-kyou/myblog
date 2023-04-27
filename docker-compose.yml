@@ -1,0 +1,38 @@
+version: '3'
+services:
+  web:
+    platform: linux/arm64/v8
+    # build: .でdocker-compose.ymlと同じフォルダにDockerfileがあることを示す
+    build: .
+    # 毎回 rm tmp/pids/server.pid するのも手間であるため、・事前に手元で/tmp/pids/server.pidを削除する
+    command: /bin/sh -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3001 -b '0.0.0.0'"
+    volumes:
+      - .:/app
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    # railsでpryする用
+    # true を指定することでコンテナを起動させ続けることができます。   
+    tty: true
+    # stdin_openとは標準入出力とエラー出力をコンテナに結びつける設定です。
+    stdin_open: true
+  db:
+# M1Macを使用している場合には記述が必要。記述しないと docker: no matching manifest for linux/arm64/v8 in the manifest list entries. というエラーが発生。
+    platform: linux/amd64
+    image: mysql:8.0.28
+    # mysql8.0の認証形式に関する設定
+    command: --default-authentication-plugin=mysql_native_password
+    # コンテナを再度起動した際にデータを入れ直すことを防止
+    volumes:
+      - ./src/db/mysql_data:/var/lib/mysql
+    # mysqlはパスワードを設定していないとエラーになるため以下は設定必須
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      TZ: "Asia/Tokyo"
+    ports:
+      - "3310:3306"
+# PC上にdb-volumeという名前でボリューム（データ領域）が作成される
+# コンテナを作り直したとしてもPC上に残るようにするために設定
+volumes:
+  db-volume:
